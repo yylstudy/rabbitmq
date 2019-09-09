@@ -6,8 +6,9 @@ import common.CommonUtil;
 import org.junit.Test;
 
 /**
+ * rabbitmq生产者消息的确认机制
  * 通过confirm方式来确认消息正确的到达rabbitmq，这里的到达rabbitmq是指被正确的发往mq的交换器，
- * 如果此交换器上没有匹配的队列，那么消息也会丢失，所以生成环境中需要配合mandatory
+ * 如果此交换器上没有匹配的队列，那么消息也会丢失，所以生产环境中需要配合mandatory
  * 参数或者备份交换器一起使用来提高消息传输的可靠性
  * 注意confirm有三种方式
  * 1）普通的confirm  这种方式相比事务方式并没有太大的性能提升
@@ -26,6 +27,9 @@ public class MyTest6 {
     @Test
     public void test1() throws Exception{
         Channel channel = CommonUtil.getChannel();
+        channel.exchangeDeclare(EXCHANGE_NAME,"direct",true,false,false,null);
+        channel.queueDeclare(QUEUE_NAME,true,false,false,null);
+        channel.queueBind(QUEUE_NAME,EXCHANGE_NAME,ROUTING_KEY);
         /**将信道设置成publisher confirm模式*/
         channel.confirmSelect();
         channel.basicPublish(EXCHANGE_NAME,ROUTING_KEY,

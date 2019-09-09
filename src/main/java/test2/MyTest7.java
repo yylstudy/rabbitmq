@@ -6,7 +6,8 @@ import common.CommonUtil;
 import org.junit.Test;
 
 /**
- * 2）批量confirm
+ * 2）批量confirm  这种方式的缺点是：如果有一个消息出现nack或者超时的情况下，这一批消息都要重发
+ *    这会带来明显的重复消息数量
  * @Author: yyl
  * @Date: 2018/11/24 15:29
  */

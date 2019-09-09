@@ -28,7 +28,7 @@ public class MyTest3 {
         param.put("x-message-ttl",6000);
         /**设置队列的过期时间*/
         param.put("x-expires",180000);
-        channel.queueDeclare(QUEUE_NAME,true,false,false,null);
+        channel.queueDeclare(QUEUE_NAME,true,false,false,param);
         channel.queueBind(QUEUE_NAME,EXCHANGE_NAME,ROUTING_KEY);
         String message = "hello world";
         channel.basicPublish(EXCHANGE_NAME,ROUTING_KEY,true,MessageProperties.PERSISTENT_TEXT_PLAIN,message.getBytes());
@@ -39,7 +39,7 @@ public class MyTest3 {
     }
 
     /**
-     * 发送消息
+     * 设置消息的过期时间
      * @throws Exception
      */
     @Test

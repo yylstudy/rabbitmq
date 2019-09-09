@@ -9,6 +9,10 @@ import java.util.Map;
 
 /**
  * rabbitmq死信队列，当消息变成死信后，就会进入死信交换器，死信交换器上绑定的队列就是死信队列
+ * 消息变成死信一般是由于下面几种情况：
+ * 1）消息被拒绝，并且requeue属性设置为false
+ * 2）消息过期
+ * 3）队列达到最大长度
  * rabbitmq延迟队列，rabbitmq上并不直接支持延迟队列，但是可以使用过期时间和死信队列实现延迟队列
  * 方法就是消费者并不直接订阅消息发送的队列，而是订阅消息的死信队列，这样就可以延迟获取消息了
  * @Author: yyl
@@ -25,13 +29,13 @@ public class MyTest4 {
         Channel channel = connection.createChannel();
         channel.exchangeDeclare(EXCHANGE_NAME,"direct",true,false,null);
         /**声明一个死信交换器*/
-        channel.exchangeDeclare("dlx_exchange","direct",true,false,null);
+        channel.exchangeDeclare("dlx_exchange","fanout",true,false,null);
         Map<String,Object> param = new HashMap<>();
         /**设置消息的过期时间，等待其变成死信*/
         param.put("x-message-ttl",6000);
         /**设置队列上绑定的死信交换器*/
         param.put("x-dead-letter-exchange","dlx_exchange");
-        /**指定死信的路由键*/
+        /**指定死信的路由键，如果没有指定，默认使用原队列的路由建*/
         param.put("x-dead-letter-routing-key","dlx_routingkey");
         channel.queueDeclare(QUEUE_NAME,true,false,false,param);
         channel.queueBind(QUEUE_NAME,EXCHANGE_NAME,ROUTING_KEY);

@@ -16,12 +16,12 @@ import java.util.TreeSet;
 /**
  * 客户端确认publisher confirm 批量异步确认
  * 同步的缺点是性能较事务方式没有太大提升
- * 但是异步确认的方式能极大提升性能，单位问题在于如果出现未被确认的情况下，需要将这一批次的消息重发
- * 因为异步确认此事并不知道哪个消息未被确认，所以如果消息经常丢失，异步提交的方式的性能是不升反降的
+ * 但是异步确认的方式能极大提升性能，但是编程模型较为复杂，需要在客户端维护状态，建议采用异步的方式
  * @Author: yyl
  * @Date: 2018/11/24 15:08
  */
 public class MyTest8 {
+    private static final String QUEUE_NAME = "queue_demo";
     private static final String EXCHANGE_NAME = "exchange_demo";
     private static final String ROUTING_KEY="routingkey-demo";
     /**存放未确认消息的标识tag*/
@@ -29,6 +29,9 @@ public class MyTest8 {
     @Test
     public void test1() throws Exception {
         Channel channel = CommonUtil.getChannel();
+        channel.exchangeDeclare(EXCHANGE_NAME,"direct",true,false,false,null);
+        channel.queueDeclare(QUEUE_NAME,true,false,false,null);
+        channel.queueBind(QUEUE_NAME,EXCHANGE_NAME,ROUTING_KEY);
         channel.confirmSelect();
         /**添加一个消息确认的监听器*/
         channel.addConfirmListener(new ConfirmListener() {
@@ -42,12 +45,14 @@ public class MyTest8 {
             public void handleAck(long deliveryTag, boolean multiple) throws IOException {
                 System.out.println("消息被确认,seqNo:"+deliveryTag+" multiple:"+multiple);
                 try{
-                    /**多条就删除这个流水号之前的*/
-                    if(multiple){
-                        /**这里可能会抛出ConcurrentModificationException异常 暂时不管 */
-                        confirmSet.headSet(deliveryTag+1).clear();
-                    }else{
-                        confirmSet.remove(deliveryTag);
+                    //多条就删除这个流水号之前的
+                    synchronized (confirmSet){
+                        if(multiple){
+                            //这里可能会抛出ConcurrentModificationException异常 暂时不管
+                            confirmSet.headSet(deliveryTag+1).clear();
+                        }else{
+                            confirmSet.remove(deliveryTag);
+                        }
                     }
                 }catch (Exception e){
                     e.printStackTrace();
@@ -64,15 +69,22 @@ public class MyTest8 {
             @Override
             public void handleNack(long deliveryTag, boolean multiple) throws IOException {
                 System.out.println("消息未被确认,seqNo:"+deliveryTag+" multiple:"+multiple);
+                if(multiple){
+                    confirmSet.headSet(deliveryTag-1).clear();
+                }else{
+                    confirmSet.remove(deliveryTag);
+                }
             }
         });
         for(int i=0;i<1000;i++){
-            /**获取下一次发送消息的流水号*/
+            //获取下一次发送消息的流水号 这个应该就是deliveryTag
             long nextSeqNo = channel.getNextPublishSeqNo();
             channel.basicPublish(EXCHANGE_NAME,ROUTING_KEY,
                     MessageProperties.PERSISTENT_TEXT_PLAIN,("test message"+i).getBytes());
-            /**流水号进缓存*/
-            confirmSet.add(nextSeqNo);
+            //流水号进缓存
+            synchronized (confirmSet){
+                confirmSet.add(nextSeqNo);
+            }
         }
         Thread.sleep(5000);
     }

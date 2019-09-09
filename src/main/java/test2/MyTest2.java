@@ -11,6 +11,7 @@ import java.util.Map;
 /**
  * 使用备份交换器来处理未找到队列的消息，
  * 这里需要注意的是消息重新发送到备份交换器的路由键和从生产者发出的路由键是一样的
+ * 为了避免路由键的配置，可以将备份交换器的类型设置为fanout，这样就不需要关心备份交换器上绑定的队列的BangingKey了
  * @Author: yyl
  * @Date: 2018/11/23 17:28
  */
@@ -36,11 +37,11 @@ public class MyTest2 {
         channel.queueDeclare("myAe_queue2",true,false,false,null);
         channel.queueBind(QUEUE_NAME,EXCHANGE_NAME,ROUTING_KEY);
         /**绑定备份交换器队列1*/
-        channel.queueBind("myAe_queue1","myAe",ROUTING_KEY);
+        channel.queueBind("myAe_queue1","myAe","");
         /**绑定备份交换器队列2*/
-        channel.queueBind("myAe_queue2","myAe",ROUTING_KEY);
+        channel.queueBind("myAe_queue2","myAe","");
         String message = "hello world";
-        channel.basicPublish(EXCHANGE_NAME,ROUTING_KEY,true,MessageProperties.PERSISTENT_TEXT_PLAIN,message.getBytes());
+        channel.basicPublish(EXCHANGE_NAME,ROUTING_KEY+12,true,MessageProperties.PERSISTENT_TEXT_PLAIN,message.getBytes());
         /**注意这里需要sleep*/
         Thread.sleep(100);
         channel.close();
